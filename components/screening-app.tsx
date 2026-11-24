@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Sparkles, RotateCcw, KeyRound, ShieldAlert, FileText, CheckCircle2 } from 'lucide-react';
+import { Sparkles, RotateCcw, ShieldAlert, FileText, CheckCircle2 } from 'lucide-react';
 import { CandidateFile, Rubric, RubricCriterion } from '@/lib/types';
 import { CONFIG, DISCLAIMER_TEXT } from '@/lib/config';
 import {
@@ -17,12 +17,8 @@ import { ResumeUpload } from './resume-upload';
 import { ProcessingStatus } from './processing-status';
 import { ResultsTable } from './results-table';
 import { CandidateDetailDrawer } from './candidate-detail-drawer';
-import { DemoAccessForm } from './demo-access-form';
 
 export function ScreeningApp() {
-  // Session & Prototype Access State (Memory Only)
-  const [accessCode, setAccessCode] = useState<string>('candidate-lens-demo-2025');
-  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Stage 1: Role & Rubric State
@@ -74,7 +70,6 @@ export function ScreeningApp() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-demo-access-code': accessCode,
         },
         body: JSON.stringify({ job_description: jobDescription }),
       });
@@ -163,7 +158,6 @@ export function ScreeningApp() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-demo-access-code': accessCode,
       },
       body: JSON.stringify({
         candidate_id: candidate.id,
@@ -396,16 +390,6 @@ export function ScreeningApp() {
 
               <button
                 type="button"
-                onClick={() => setIsAccessModalOpen(true)}
-                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                title="View or modify in-memory access code"
-              >
-                <KeyRound className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
-                Access Code
-              </button>
-
-              <button
-                type="button"
                 onClick={handleClearSession}
                 disabled={isEvaluating}
                 className="inline-flex items-center rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -500,15 +484,6 @@ export function ScreeningApp() {
         rubricCriteria={rubric?.criteria || []}
         isOpen={Boolean(selectedCandidateId)}
         onClose={() => setSelectedCandidateId(null)}
-      />
-
-      {/* Demo Access Code Modal */}
-      <DemoAccessForm
-        accessCode={accessCode}
-        onSaveAccessCode={setAccessCode}
-        isOpen={isAccessModalOpen}
-        onClose={() => setIsAccessModalOpen(false)}
-        isConfigured={Boolean(accessCode)}
       />
     </div>
   );

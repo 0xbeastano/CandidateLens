@@ -20,23 +20,7 @@ const modelRubricOutputSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Prototype protection access code verification
-    const accessCode = req.headers.get('x-demo-access-code');
-    const authResult = verifyDemoAccessCode(accessCode);
-    if (!authResult.authorized) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'UNAUTHORIZED_ACCESS',
-            message: authResult.message || 'Unauthorized demo access code.',
-            retryable: false,
-          },
-        },
-        { status: 401 }
-      );
-    }
-
-    // 2. Parse and validate request body
+    // 1. Parse and validate request body
     let body: unknown;
     try {
       body = await req.json();
