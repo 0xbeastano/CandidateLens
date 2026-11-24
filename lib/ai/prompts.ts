@@ -65,7 +65,7 @@ Rules:
    clear: specific relevant work or project evidence;
    limited: a skill mention or incomplete supporting evidence;
    none: no supporting evidence found.
-7. Clear and limited levels require exact quotations from the resume.
+7. Clear and limited levels require exact quotations from the resume. Copy exact verbatim substrings directly from the resume text without altering words, changing punctuation, or adding periods not in the resume.
 8. None requires an empty quotes array.
 9. Missing evidence does not prove the person lacks the ability.
 10. Do not invent employers, dates, metrics, qualifications, or outcomes.

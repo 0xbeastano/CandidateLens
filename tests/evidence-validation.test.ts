@@ -56,6 +56,48 @@ He integrated Google Gemini API into customer-facing applications, reducing late
     expect(result.valid).toBe(true);
   });
 
+  it('passes when model adds a trailing period to a resume bullet that had no period', () => {
+    const resumeBullet = 'Engineered distributed microservices using TypeScript and Node';
+    const evaluation: EvaluatedCriterion[] = [
+      {
+        criterion_id: 'c1',
+        evidence_level: 'clear',
+        quotes: ['Engineered distributed microservices using TypeScript and Node.'], // Note trailing period
+        explanation: 'Valid match despite trailing period',
+      },
+      {
+        criterion_id: 'c2',
+        evidence_level: 'none',
+        quotes: [],
+        explanation: 'None',
+      },
+    ];
+
+    const result = validateEvidenceOutput(evaluation, approvedRubric, resumeBullet);
+    expect(result.valid).toBe(true);
+  });
+
+  it('passes when quotes contain ellipsis (...) connecting two segments from the same sentence', () => {
+    const longResumeSentence = 'Led team of 10 engineers across multiple regions, saving $500k in infrastructure costs annually.';
+    const evaluation: EvaluatedCriterion[] = [
+      {
+        criterion_id: 'c1',
+        evidence_level: 'clear',
+        quotes: ['Led team of 10 engineers ... saving $500k in infrastructure costs'],
+        explanation: 'Valid match with ellipsis',
+      },
+      {
+        criterion_id: 'c2',
+        evidence_level: 'none',
+        quotes: [],
+        explanation: 'None',
+      },
+    ];
+
+    const result = validateEvidenceOutput(evaluation, approvedRubric, longResumeSentence);
+    expect(result.valid).toBe(true);
+  });
+
   it('rejects when fabricated or hallucinated quotes do not exist in the resume', () => {
     const evaluation: EvaluatedCriterion[] = [
       {

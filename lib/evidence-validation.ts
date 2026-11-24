@@ -9,6 +9,9 @@ export interface EvidenceValidationResult {
 /**
  * Normalizes text for exact quote verification:
  * - Normalizes Unicode to NFKC
+ * - Strips invisible zero-width spaces and soft hyphens
+ * - Normalizes en-dash, em-dash, and minus signs to standard hyphen
+ * - Normalizes smart single/double quotes to standard quotes
  * - Replaces non-breaking spaces and irregular whitespace characters with standard spaces
  * - Collapses consecutive whitespace characters (including newlines and tabs) to a single space
  * - Trims leading and trailing whitespace
@@ -17,10 +20,52 @@ export interface EvidenceValidationResult {
 export function normalizeForQuoteMatch(text: string): string {
   return text
     .normalize('NFKC')
+    .replace(/[\u200B\u200C\u200D\uFEFF\u00AD]/g, '')
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
     .replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+/**
+ * Verifies if a normalized quotation exists in the normalized resume text:
+ * 1. Direct exact substring match.
+ * 2. Exact match after stripping model-added edge punctuation (trailing period, leading bullet).
+ * 3. Exact match for ellipsis-separated fragments (when model quotes with "...").
+ */
+export function quoteMatchesResume(normalizedQuote: string, normalizedResume: string): boolean {
+  if (!normalizedQuote) return false;
+
+  // 1. Direct exact match
+  if (normalizedResume.includes(normalizedQuote)) {
+    return true;
+  }
+
+  // 2. Strip model-added edge punctuation (trailing periods/commas or leading bullet markers)
+  const trimmedPunct = normalizedQuote
+    .replace(/^[•\-\*\s"'`]+/, '')
+    .replace(/[\.\,\;\:\!\?\s"'`]+$/, '');
+
+  if (trimmedPunct.length >= 3 && normalizedResume.includes(trimmedPunct)) {
+    return true;
+  }
+
+  // 3. Handle ellipsis (...) if model quoted non-contiguous fragments from a single section
+  if (normalizedQuote.includes('...') || normalizedQuote.includes('…')) {
+    const fragments = normalizedQuote
+      .split(/\.{3,}|…/)
+      .map((f) => f.replace(/^[•\-\*\s"'`]+/, '').replace(/[\.\,\;\:\!\?\s"'`]+$/, ''))
+      .filter((f) => f.length >= 3);
+
+    if (fragments.length > 0 && fragments.every((frag) => normalizedResume.includes(frag))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -89,7 +134,7 @@ export function validateEvidenceOutput(
       const failedQuotes: string[] = [];
       for (const quote of criterion.quotes) {
         const normalizedQuote = normalizeForQuoteMatch(quote);
-        if (!normalizedQuote || !normalizedResume.includes(normalizedQuote)) {
+        if (!quoteMatchesResume(normalizedQuote, normalizedResume)) {
           failedQuotes.push(quote);
         }
       }
