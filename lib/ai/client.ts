@@ -4,6 +4,7 @@ import { CONFIG } from '../config';
 export interface GenAiCallParams {
   systemInstruction?: string;
   contents: string;
+  apiKeyOverride?: string | null;
 }
 
 export class GenAiServiceError extends Error {
@@ -18,20 +19,19 @@ export class GenAiServiceError extends Error {
   }
 }
 
-// Fallback credentials to guarantee zero-setup live operation on Vercel/production
-const DEFAULT_GEMINI_KEY = 'AIzaSyAkhTeLn09wvZvS5NJu_JlKEFtK6efMcnY';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 /**
  * Gets configured Google Gen AI client with server-side API key and model resolution.
+ * Supports runtime header override so users can paste their own API key directly in the UI.
  */
-export function getGeminiConfig(): { apiKey: string; modelName: string } {
-  const apiKey = process.env.GEMINI_API_KEY || DEFAULT_GEMINI_KEY;
+export function getGeminiConfig(apiKeyOverride?: string | null): { apiKey: string; modelName: string } {
+  const apiKey = (apiKeyOverride && apiKeyOverride.trim()) || process.env.GEMINI_API_KEY;
   const modelName = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
 
   if (!apiKey || apiKey.trim() === '') {
     throw new GenAiServiceError(
-      'Server configuration error: GEMINI_API_KEY is not configured.',
+      'Gemini API key is not configured. Please click "Set API Key" in the top bar to paste your key.',
       'API_KEY_MISSING',
       false
     );
@@ -47,8 +47,9 @@ export function getGeminiConfig(): { apiKey: string; modelName: string } {
 export async function callGeminiJson({
   systemInstruction,
   contents,
+  apiKeyOverride,
 }: GenAiCallParams): Promise<string> {
-  const { apiKey, modelName } = getGeminiConfig();
+  const { apiKey, modelName } = getGeminiConfig(apiKeyOverride);
 
   const ai = new GoogleGenAI({ apiKey });
 
@@ -100,6 +101,14 @@ export async function callGeminiJson({
       const status = err?.status || err?.statusCode || 0;
       const message = err?.message || 'Unknown provider error';
 
+      if (message.toLowerCase().includes('leaked') || (status === 403 && message.toLowerCase().includes('permission_denied'))) {
+        throw new GenAiServiceError(
+          'Your Gemini API key was reported as leaked/revoked by Google. Please generate a new key at https://aistudio.google.com/apikey and paste it using the "Set Gemini API Key" button.',
+          'KEY_REVOKED_LEAKED',
+          false
+        );
+      }
+
       if (status === 429 || message.toLowerCase().includes('rate limit') || message.toLowerCase().includes('quota')) {
         throw new GenAiServiceError(
           'Gemini API quota or rate limit exceeded. Please wait a moment before retrying.',
@@ -110,7 +119,7 @@ export async function callGeminiJson({
 
       if (status === 401 || status === 403 || message.toLowerCase().includes('api key')) {
         throw new GenAiServiceError(
-          'Authentication failed with Gemini API. Please check your GEMINI_API_KEY.',
+          'Authentication failed with Gemini API. Please click "Set Gemini API Key" in the top bar to paste a valid key.',
           'AUTHENTICATION_FAILED',
           false
         );

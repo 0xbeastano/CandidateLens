@@ -54,10 +54,12 @@ export async function POST(req: NextRequest) {
     const { job_description } = parseResult.data;
 
     // 3. Call Gemini Model to draft criteria
+    const userApiKey = req.headers.get('x-gemini-api-key');
     const prompt = buildRubricGenerationPrompt(job_description);
     const rawModelResponse = await callGeminiJson({
       systemInstruction: RUBRIC_GENERATION_SYSTEM_INSTRUCTION,
       contents: prompt,
+      apiKeyOverride: userApiKey,
     });
 
     // 4. Parse model response JSON

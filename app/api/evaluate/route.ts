@@ -61,10 +61,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Call Gemini Model to extract evidence
+    const userApiKey = req.headers.get('x-gemini-api-key');
     const prompt = buildCandidateEvaluationPrompt(rubric.criteria, resume_text);
     const rawModelResponse = await callGeminiJson({
       systemInstruction: CANDIDATE_EVALUATION_SYSTEM_INSTRUCTION,
       contents: prompt,
+      apiKeyOverride: userApiKey,
     });
 
     // 4. Parse model response JSON

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Sparkles, RotateCcw, ShieldAlert, FileText, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Sparkles, RotateCcw, ShieldAlert, FileText, CheckCircle2, Key } from 'lucide-react';
 import { CandidateFile, Rubric, RubricCriterion } from '@/lib/types';
 import { CONFIG, DISCLAIMER_TEXT } from '@/lib/config';
 import {
@@ -17,9 +17,29 @@ import { ResumeUpload } from './resume-upload';
 import { ProcessingStatus } from './processing-status';
 import { ResultsTable } from './results-table';
 import { CandidateDetailDrawer } from './candidate-detail-drawer';
+import { GeminiApiKeyModal } from './gemini-api-key-modal';
 
 export function ScreeningApp() {
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+
+  // Load saved API key on client mount if available
+  useEffect(() => {
+    try {
+      const savedKey = localStorage.getItem('candidatelens_gemini_key');
+      if (savedKey) {
+        setGeminiApiKey(savedKey);
+      }
+    } catch {}
+  }, []);
+
+  const handleSaveApiKey = (key: string) => {
+    setGeminiApiKey(key);
+    try {
+      localStorage.setItem('candidatelens_gemini_key', key);
+    } catch {}
+  };
 
   // Stage 1: Role & Rubric State
   const [roleTitle, setRoleTitle] = useState('');
@@ -70,6 +90,7 @@ export function ScreeningApp() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(geminiApiKey ? { 'x-gemini-api-key': geminiApiKey } : {}),
         },
         body: JSON.stringify({ job_description: jobDescription }),
       });
@@ -158,6 +179,7 @@ export function ScreeningApp() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(geminiApiKey ? { 'x-gemini-api-key': geminiApiKey } : {}),
       },
       body: JSON.stringify({
         candidate_id: candidate.id,
@@ -379,9 +401,24 @@ export function ScreeningApp() {
             <div className="flex items-center space-x-2">
               <button
                 type="button"
+                onClick={() => setIsApiKeyModalOpen(true)}
+                disabled={isEvaluating}
+                className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  geminiApiKey
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                    : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                }`}
+                title="Paste your Google Gemini API key"
+              >
+                <Key className="mr-1.5 h-3.5 w-3.5" />
+                {geminiApiKey ? 'API Key Set' : 'Set Gemini API Key'}
+              </button>
+
+              <button
+                type="button"
                 onClick={handleLoadSyntheticDemo}
                 disabled={isEvaluating}
-                className="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                 title="Loads 3 sample candidates + 1 error fixture without API calls"
               >
                 <Sparkles className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
@@ -411,12 +448,22 @@ export function ScreeningApp() {
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
         {/* Error notification banner if rubric generation failed */}
         {rubricError && (
-          <div className="rounded-lg bg-rose-50 p-4 border border-rose-200 flex items-start space-x-3 text-xs text-rose-800">
-            <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Criteria Generation Failed</p>
-              <p className="mt-0.5">{rubricError}</p>
+          <div className="rounded-lg bg-rose-50 p-4 border border-rose-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-rose-800">
+            <div className="flex items-start space-x-3">
+              <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Criteria Generation Failed</p>
+                <p className="mt-0.5">{rubricError}</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className="shrink-0 inline-flex items-center rounded-md bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+            >
+              <Key className="mr-1.5 h-3.5 w-3.5" />
+              Update API Key
+            </button>
           </div>
         )}
 
@@ -451,6 +498,7 @@ export function ScreeningApp() {
           onAddCandidates={handleAddCandidates}
           onRemoveCandidate={handleRemoveCandidate}
           isEvaluating={isEvaluating}
+          onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         />
 
         {/* Stage 3: Candidate Processing Controller */}
@@ -484,6 +532,14 @@ export function ScreeningApp() {
         rubricCriteria={rubric?.criteria || []}
         isOpen={Boolean(selectedCandidateId)}
         onClose={() => setSelectedCandidateId(null)}
+      />
+
+      {/* Gemini API Key Modal */}
+      <GeminiApiKeyModal
+        apiKey={geminiApiKey}
+        onSaveApiKey={handleSaveApiKey}
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
       />
     </div>
   );

@@ -11,6 +11,7 @@ interface ResumeUploadProps {
   onAddCandidates: (newCandidates: CandidateFile[]) => void;
   onRemoveCandidate: (id: string) => void;
   isEvaluating: boolean;
+  onOpenApiKeyModal?: () => void;
 }
 
 export function ResumeUpload({
@@ -18,6 +19,7 @@ export function ResumeUpload({
   onAddCandidates,
   onRemoveCandidate,
   isEvaluating,
+  onOpenApiKeyModal,
 }: ResumeUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -299,9 +301,23 @@ export function ResumeUpload({
 
                 {/* Specific Error Message if manual_review or failed */}
                 {c.statusMessage && (
-                  <div className="mt-2 text-[11px] text-amber-700 bg-amber-50/70 p-2 rounded border border-amber-200 flex items-start space-x-1.5">
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-                    <span>{c.statusMessage}</span>
+                  <div className="mt-2 text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded border border-amber-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-start space-x-1.5">
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>{c.statusMessage}</span>
+                    </div>
+                    {onOpenApiKeyModal &&
+                      (c.statusMessage.toLowerCase().includes('api key') ||
+                        c.statusMessage.toLowerCase().includes('leaked') ||
+                        c.statusMessage.toLowerCase().includes('authentication')) && (
+                        <button
+                          type="button"
+                          onClick={onOpenApiKeyModal}
+                          className="shrink-0 rounded bg-amber-600 hover:bg-amber-700 text-white font-semibold px-2.5 py-1 text-[11px]"
+                        >
+                          Paste New API Key
+                        </button>
+                      )}
                   </div>
                 )}
 
